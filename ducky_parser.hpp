@@ -1,9 +1,10 @@
 #include <map>
+#include <vector>
 
 struct HID_output
 {
-    uint8_t keycode;
-    uint8_t modifier;
+  uint8_t keycode;
+  uint8_t modifier;
 };
 
 std::map<String, u_int8_t> modifiersMap = {
@@ -51,8 +52,7 @@ std::map<String, u_int8_t> specialKeyCodeMap = {
     {"BREAK", 0x48},
     {"PRINTSCREEN", 0x46},
     {"MENU", 0x76},
-    {"APP", 0x65},
-    {"+", 0x2E}};
+    {"APP", 0x65}};
 
 std::map<char, HID_output> charToHID_output = {
     {' ', HID_output({0x2C, 0x00})},
@@ -89,38 +89,87 @@ std::map<char, HID_output> charToHID_output = {
     {'"', HID_output({0x34, KEYBOARD_MODIFIER_LEFTSHIFT})},
     {'<', HID_output({0x36, KEYBOARD_MODIFIER_LEFTSHIFT})},
     {'>', HID_output({0x37, KEYBOARD_MODIFIER_LEFTSHIFT})},
-    {'?', HID_output({0x38, KEYBOARD_MODIFIER_LEFTSHIFT})}
-};
+    {'?', HID_output({0x38, KEYBOARD_MODIFIER_LEFTSHIFT})}};
 
 HID_output ParseCharToKeycode(char c)
 {
-    HID_output hid_outp;
-    hid_outp.modifier = 0x00; // No modifier
+  HID_output hid_outp;
+  hid_outp.modifier = 0x00; // No modifier
 
-    int c_code = (int)c;
+  int c_code = (int)c;
 
-    if (c_code >= 65 && c_code <= 90) // [A-Z]
-    {
-        hid_outp.modifier = KEYBOARD_MODIFIER_LEFTSHIFT;
-        hid_outp.keycode = c_code - 61;
-        return hid_outp;
-    }
-    if (c_code >= 97 && c_code <= 122) // [a-z]
-    {
-        hid_outp.keycode = c_code - 93;
-        return hid_outp;
-    }
-    if (c_code >= 49 && c_code <= 57) // [1-9]
-    {
-        hid_outp.keycode = c_code - 19;
-        return hid_outp;
-    }
-    if (c_code == 48) // 0
-    {
-        hid_outp.keycode = 0x27;
-        return hid_outp;
-    }
-
-    hid_outp = charToHID_output[c];
+  if (c_code >= 65 && c_code <= 90) // [A-Z]
+  {
+    hid_outp.modifier = KEYBOARD_MODIFIER_LEFTSHIFT;
+    hid_outp.keycode = c_code - 61;
     return hid_outp;
+  }
+  if (c_code >= 97 && c_code <= 122) // [a-z]
+  {
+    hid_outp.keycode = c_code - 93;
+    return hid_outp;
+  }
+  if (c_code >= 49 && c_code <= 57) // [1-9]
+  {
+    hid_outp.keycode = c_code - 19;
+    return hid_outp;
+  }
+  if (c_code == 48) // 0
+  {
+    hid_outp.keycode = 0x27;
+    return hid_outp;
+  }
+
+  hid_outp = charToHID_output[c];
+  return hid_outp;
+}
+
+/*
+    Real parsing
+*/
+std::vector<HID_output> ParseStringToBuffer(String str)
+{
+  const char *cArr = str.c_str();
+  int len = str.length();
+
+  std::vector<HID_output> buffer;
+  for (int i = 0; i < len; i++)
+  {
+    buffer.push_back(ParseCharToKeycode(cArr[i]));
+  }
+
+  return buffer;
+}
+
+HID_output ParseSpecialToken(String token)
+{
+  HID_output tmp;
+  tmp.modifier = modifiersMap[token];
+  tmp.keycode = specialKeyCodeMap[token];
+
+  if (tmp.keycode == 0x00 && token.length() == 1)
+  {
+    tmp.keycode = ParseCharToKeycode(token[0]).keycode;
+  }
+
+  return tmp;
+}
+
+std::vector<String> splitStringBySeparator(String str, char separator)
+{
+  std::vector<String> tmp = {};
+  while (str.length() > 0)
+  {
+    int index = str.indexOf(separator);
+    if (index == -1)
+    {
+      tmp.push_back(str);
+      break;
+    }
+
+    tmp.push_back(str.substring(0, index));
+    str = str.substring(index + 1);
+  }
+
+  return tmp;
 }
