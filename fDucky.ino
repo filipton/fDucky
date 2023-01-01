@@ -9,8 +9,6 @@
 
 using namespace std;
 
-#define KEY_DELAY 6
-
 #define PIXEL_PIN 12
 #define PIXEL_POWER_PIN 11
 Adafruit_NeoPixel rgb_led(1, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
@@ -44,7 +42,9 @@ void setupFlashStorage();
 void flashError(int times, int delayTime);
 vector<HID_output> ParseDuckyScriptLine(String line);
 
+int keyDelay = 5;
 int defaultDelay = 100;
+
 vector<HID_output> hidBuffer = {};
 
 FatFile payloadFile;
@@ -117,7 +117,7 @@ void loop()
     {
       usb_hid.keyboardRelease(1);
       lastWasKey = false;
-      delay(KEY_DELAY / 2);
+      delay(keyDelay);
     }
     if (hidBuffer.size() > 0)
     {
@@ -130,7 +130,7 @@ void loop()
       hidBuffer.erase(hidBuffer.begin());
     }
 
-    delay(KEY_DELAY / 2);
+    // delay(KEY_DELAY / 2);
   }
 }
 
@@ -262,6 +262,12 @@ vector<HID_output> ParseDuckyScriptLine(String line)
   {
     line = line.substring(14); // Remove "DEFAULT_DELAY " from string
     defaultDelay = line.toInt();
+    return {};
+  }
+  else if (line.startsWith("DEFAULTCHARDELAY"))
+  {
+    line = line.substring(17); // Remove "DEFAULTCHARDELAY " from string
+    keyDelay = line.toInt();
     return {};
   }
   else
