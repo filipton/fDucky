@@ -254,8 +254,8 @@ vector<HID_output> ParseStringToBuffer(String str)
 HID_output ParseSpecialToken(String token)
 {
   HID_output tmp;
-  tmp.modifier = GetModifier(token);
-  tmp.keycode = GetSpecialKeyCode(token);
+  tmp.modifier = modifiersMap[token];
+  tmp.keycode = specialKeyCodeMap[token];
 
   if (tmp.keycode == 0x00 && token.length() == 1)
   {
