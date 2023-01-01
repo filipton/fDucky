@@ -49,8 +49,8 @@ int defaultDelay = 100;
 
 vector<HID_output> hidBuffer = {};
 
-bool programMode = false;
 FatFile payloadFile;
+bool programMode = false;
 bool payloadEnded = false;
 
 void setup()
@@ -88,7 +88,27 @@ void payloadReader()
     flashError(new bool[3]{true, true, true});
   }
 
-  if (!root.exists("test.txt") || !payloadFile.open("test.txt", O_READ))
+  FatFile selectedPayload;
+  if (root.exists("selected.txt") && selectedPayload.open("selected.txt", O_READ))
+  {
+    String payloadName = "";
+    while (selectedPayload.available())
+    {
+      char c = selectedPayload.read();
+      if (c == '\n')
+        break;
+
+      payloadName += c;
+    }
+    payloadName.trim();
+    payloadName = "payloads/" + payloadName;
+
+    if (!payloadFile.open(payloadName.c_str(), O_READ))
+    {
+      flashError(new bool[3]{true, false, true});
+    }
+  }
+  else
   {
     flashError(new bool[3]{true, true, false});
   }
