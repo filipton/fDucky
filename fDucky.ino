@@ -9,6 +9,7 @@
 
 using namespace std;
 
+#define PROGRAM_MODE_PIN 3
 #define PIXEL_PIN 12
 #define PIXEL_POWER_PIN 11
 Adafruit_NeoPixel rgb_led(1, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
@@ -39,7 +40,8 @@ bool isFsChanged;
 /* ======================================================================== */
 
 void setupFlashStorage();
-void flashError(int times, int delayTime);
+void payloadReader();
+void flashError(bool *code);
 vector<HID_output> ParseDuckyScriptLine(String line);
 
 int keyDelay = 5;
@@ -47,51 +49,72 @@ int defaultDelay = 100;
 
 vector<HID_output> hidBuffer = {};
 
+bool programMode = false;
 FatFile payloadFile;
 bool payloadEnded = false;
 
 void setup()
 {
-  usb_hid.setStringDescriptor("Logitech Keyboard");
-  usb_hid.begin();
-
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(PIXEL_POWER_PIN, OUTPUT);
   digitalWrite(PIXEL_POWER_PIN, HIGH);
 
+  pinMode(PROGRAM_MODE_PIN, INPUT_PULLUP);
+  programMode = digitalRead(PROGRAM_MODE_PIN) == LOW;
+
   rgb_led.begin();
   flash.begin();
-
   setupFlashStorage();
 
+  if (programMode)
+  {
+    Serial.begin(115200);
+  }
+  else
+  {
+    usb_hid.setStringDescriptor("Logitech Keyboard");
+    usb_hid.begin();
+
+    payloadReader();
+    delay(1000); // <----- DELAY BEFORE HID STARTS SENDING KEYS
+  }
+}
+
+void payloadReader()
+{
   root.open("/");
   if (!root.exists("payloads"))
   {
-    flashError(5, 500);
+    flashError(new bool[3]{true, true, true});
   }
 
   if (!root.exists("test.txt") || !payloadFile.open("test.txt", O_READ))
   {
-    flashError(3, 250);
+    flashError(new bool[3]{true, true, false});
   }
 
   if (root.isOpen())
     root.close();
-
-  // hidBuffer = ParseDuckyScriptLine("STRING tesz");tesztesz
 }
 
+int hsvValue = 0;
 bool lastWasKey = false;
 void loop()
 {
-  // if (test > 0) {
-  //   for (int i = 0; i < 255; i++) {
-  //     rgb_led.clear();
-  //     rgb_led.setPixelColor(0, rgb_led.ColorHSV(i * 255));
-  //     rgb_led.show();
-  //     delay(10);
-  //   }
-  // }
+  if (programMode)
+  {
+    if (hsvValue > 255)
+      hsvValue = 0;
+
+    rgb_led.clear();
+    rgb_led.setPixelColor(0, rgb_led.ColorHSV(hsvValue * 255));
+    rgb_led.setBrightness(10);
+    rgb_led.show();
+    delay(10);
+    hsvValue++;
+
+    return;
+  }
 
   if (!payloadEnded && TinyUSBDevice.mounted() && usb_hid.ready())
   {
@@ -113,12 +136,6 @@ void loop()
       delay(defaultDelay);
     }
 
-    if (lastWasKey)
-    {
-      usb_hid.keyboardRelease(1);
-      lastWasKey = false;
-      delay(keyDelay);
-    }
     if (hidBuffer.size() > 0)
     {
       uint8_t keycode[6] = {0};
@@ -128,6 +145,12 @@ void loop()
       lastWasKey = true;
 
       hidBuffer.erase(hidBuffer.begin());
+    }
+    if (lastWasKey)
+    {
+      delay(keyDelay);
+      usb_hid.keyboardRelease(1);
+      lastWasKey = false;
     }
 
     // delay(KEY_DELAY / 2);
@@ -141,14 +164,14 @@ void setPixelColor(uint32_t color)
   rgb_led.show();
 }
 
-void flashError(int times, int delayTime)
+void flashError(bool *code)
 {
-  for (int i = 0; i < times; i++)
+  for (int i = 0; i < 3; i++)
   {
-    setPixelColor(rgb_led.Color(255, 0, 0));
-    delay(delayTime / 2);
+    setPixelColor(rgb_led.Color(code[i] ? 255 : 0, 0, code[i] ? 0 : 255));
+    delay(250);
     setPixelColor(rgb_led.Color(0, 0, 0));
-    delay(delayTime / 2);
+    delay(250);
   }
 }
 
@@ -163,13 +186,14 @@ void setupUsbStorage()
 
 void setupFlashStorage()
 {
-  setupUsbStorage(); // <---- control here if you want to show usb device or not!
+  if (programMode)
+    setupUsbStorage(); // <---- control here if you want to show usb device or not!
 
   isFsFormatted = fatfs.begin(&flash);
   if (!isFsFormatted)
   {
     // Serial.println("ERROR: File system not formatted!");
-    flashError(3, 500);
+    flashError(new bool[3]{false, false, false});
   }
 
   isFsChanged = true;
