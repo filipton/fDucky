@@ -16,6 +16,8 @@ I'll write better tutorial later, but now you can try it.
  - Flash your board selecting proper board config (Change USB Stack to TinyUSB and Flash Size to 1mb Sketch / 1mb fs)
  - Now you can solder little push button from [Pin D10](https://files.seeedstudio.com/wiki/XIAO-RP2040/img/xinpin.jpg) to GND
 
+![Program Button](https://github.com/filipton/fDucky/blob/main/button_connection.jpg?raw=true)
+
 ### Real usage
  - Connect Seeed XIAO RP2040 to your pc while holding new push button (D10-GND)
  - Now your pc should detect USB Storage - you should format it in FAT
