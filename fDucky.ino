@@ -17,7 +17,7 @@ uint8_t const desc_hid_report[] = {
     TUD_HID_REPORT_DESC_KEYBOARD(HID_REPORT_ID(1)),
     TUD_HID_REPORT_DESC_MOUSE(HID_REPORT_ID(2)),
     TUD_HID_REPORT_DESC_CONSUMER(HID_REPORT_ID(3))};
-Adafruit_USBD_HID usb_hid(desc_hid_report, sizeof(desc_hid_report), HID_ITF_PROTOCOL_NONE, 2, false);
+Adafruit_USBD_HID usb_hid(desc_hid_report, sizeof(desc_hid_report), HID_ITF_PROTOCOL_NONE, 1, false);
 /* ======================================================================== */
 
 void HIDloop();
@@ -204,6 +204,22 @@ std::vector<HID_output> ParseDuckyScriptLine(String line)
   {
     line = line.substring(17); // Remove "DEFAULTCHARDELAY " from string
     keyDelay = line.toInt();
+    return {};
+  }
+  else if (line.startsWith("WAIT_FOR_BUTTON_PRESS"))
+  {
+    // Wait for button press
+    while (digitalRead(PROGRAM_MODE_PIN) == HIGH)
+    {
+      delay(1);
+    }
+
+    // Wait for button release
+    while (digitalRead(PROGRAM_MODE_PIN) == LOW)
+    {
+      delay(1);
+    }
+
     return {};
   }
   else
